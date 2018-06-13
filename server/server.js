@@ -7,7 +7,7 @@ const bodyparser = require('body-parser');
 const {ObjectID} = require ('mongodb')
 var {mongoose} = require("./db/mongoose.js");
 var {Todo} = require("./models/todo");
-var {user} = require("./models/user");
+var {User} = require("./models/user");
 
 var app = express();
 const port = process.env.PORT;
@@ -18,11 +18,11 @@ app.post("/todos",(req, res)=>{
   var todo = new Todo ({
     text: req.body.text
   })
-todo.save().then((doc)=>{
-  res.send(doc);
-}, (e) =>{
-  res.status(400).send(e);
-});
+  todo.save().then((doc)=>{
+    res.send(doc);
+  }, (e) =>{
+    res.status(400).send(e);
+  });
 });
 
 app.get('/todos', (req, res)=>{
@@ -72,21 +72,21 @@ app.get('/todos/:id', (req, res)=>{
 
 app.delete("/todos/:id", (req, res) =>{
   //obtiene el id
-   var id = req.params.id
-   if(!ObjectID.isValid(id)){
-     //previene que se ejecute lo demas
-   return res.status(404).send()
-   }
-     Todo.findByIdAndRemove(id).then ((todo) =>{
-       if(!todo){
-       return res.status(404).send();
-       }
-         res.send({todo})
+  var id = req.params.id
+  if(!ObjectID.isValid(id)){
+    //previene que se ejecute lo demas
+    return res.status(404).send()
+  }
+  Todo.findByIdAndRemove(id).then ((todo) =>{
+    if(!todo){
+      return res.status(404).send();
+    }
+    res.send({todo})
 
-     }).catch((e) =>{
-       res.status(400).send(e);
-     });
- });
+  }).catch((e) =>{
+    res.status(400).send(e);
+  });
+});
 
 //path when update resosurces
 app.patch("/todos/:id", (req, res) =>{
@@ -95,9 +95,9 @@ app.patch("/todos/:id", (req, res) =>{
   var body = _.pick(req.body, ["text", "completed"])
 
   if(!ObjectID.isValid(id)){
-  return res.status(404).send()
+    return res.status(404).send()
   }
-//update
+  //update
   if (_.isBoolean(body.completed) && body.completed) {
     body.completedAt = new Date().getTime();
   } else{
@@ -105,15 +105,29 @@ app.patch("/todos/:id", (req, res) =>{
     body.completedAt = null;
   }
   //set update
-   Todo.findByIdAndUpdate(id, {$set: body}, {new: true}).then((todo)=>{
-     if(!todo){
-     return res.status(404).send();
-     }
-     res.send({todo});
-   }).catch((e) =>{
-     res.status(400).send();
-   })
+  Todo.findByIdAndUpdate(id, {$set: body}, {new: true}).then((todo)=>{
+    if(!todo){
+      return res.status(404).send();
+    }
+    res.send({todo});
+  }).catch((e) =>{
+    res.status(400).send();
+  })
 })
+
+//user
+app.post("/users",(req, res)=>{
+  var body = _.pick(req.body, ["email", "password"])
+  var user = new User (body);
+
+  user.save().then(()=>{
+  return user.generateAuthToken();
+  }).then((token)=>{
+    res.header("x-auth", token).send(user);
+  }).catch((e) =>{
+    res.status(400).send(e);
+  });
+});
 
 app.listen(port, () =>{
   console.log(`Started on port ${port}`);
