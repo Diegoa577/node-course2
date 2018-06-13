@@ -1,4 +1,5 @@
 //server
+const _ = require('lodash');
 const express = require('express');
 const bodyparser = require('body-parser');
 const {ObjectID} = require ('mongodb')
@@ -67,7 +68,50 @@ app.get('/todos/:id', (req, res)=>{
 //     });
 // });
 
+app.delete("/todos/:id", (req, res) =>{
+  //obtiene el id
+   var id = req.params.id
+   if(!ObjectID.isValid(id)){
+     //previene que se ejecute lo demas
+   return res.status(404).send()
+   }
+     Todo.findByIdAndRemove(id).then ((todo) =>{
+       if(!todo){
+       return res.status(404).send();
+       }
+         res.send({todo})
 
+     }).catch((e) =>{
+       res.status(400).send(e);
+     });
+ });
+
+//path when update resosurces
+app.patch("/todos/:id", (req, res) =>{
+  var id = req.params.id;
+  //propiedades que queremos update
+  var body = _.pick(req.body, ["text", "completed"])
+
+  if(!ObjectID.isValid(id)){
+  return res.status(404).send()
+  }
+//update
+  if (_.isBoolean(body.completed) && body.completed) {
+    body.completedAt = new Date().getTime();
+  } else{
+    body.completed = false;
+    body.completedAt = null;
+  }
+  //set update
+   Todo.findByIdAndUpdate(id, {$set: body}, {new: true}).then((todo)=>{
+     if(!todo){
+     return res.status(404).send();
+     }
+     res.send({todo});
+   }).catch((e) =>{
+     res.status(400).send();
+   })
+})
 
 app.listen(port, () =>{
   console.log(`Started on port ${port}`);
